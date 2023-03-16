@@ -24,6 +24,14 @@ func Unmarshal(data []byte, order binary.ByteOrder, v interface{}) error {
 	return NewReaderFromBytes(data, order, false).Unmarshal(v)
 }
 
+func MarshalLE(v interface{}) ([]byte, error) {
+	return NewWriter(nil, binary.LittleEndian, false).Marshal(v)
+}
+
+func MarshalBE(v interface{}) ([]byte, error) {
+	return NewWriter(nil, binary.BigEndian, false).Marshal(v)
+}
+
 func Marshal(order binary.ByteOrder, v interface{}) ([]byte, error) {
 	return NewWriter(nil, order, false).Marshal(v)
 }
