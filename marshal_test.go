@@ -7,11 +7,25 @@ import (
 	"testing"
 )
 
-func Test_marshal_Marshal(t *testing.T) {
-	type A struct {
-		I int32 `bin:"len:3"`
-		F float64
+type A struct {
+	I int32   `bin:"len:3"`
+	F float64 `bin:"Float64Int"`
+}
+
+func (a A) Float64IntDecode(r Reader) (float64, error) {
+	v, err := r.ReadInt32()
+	if err != nil {
+		return 0, err
 	}
+	return float64(v) / 1000000, nil
+}
+
+func (a A) Float64IntEncode(w Writer, v float64) error {
+	return w.WriteInt32(int32(v * 1000000))
+}
+
+func Test_marshal_Marshal(t *testing.T) {
+
 	w := NewWriter(nil, nil, true)
 	m := &marshal{w}
 

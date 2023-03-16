@@ -85,7 +85,7 @@ func (u *unmarshal) setValueToField(structValue, fieldValue reflect.Value, field
 
 	if fieldData.FuncName != "" {
 		var okCallFunc bool
-		okCallFunc, err = callFunc(r, fieldData.FuncName, structValue, fieldValue)
+		okCallFunc, err = callDecodeFunc(r, fieldData.FuncName, structValue, fieldValue)
 		if err != nil {
 			return fmt.Errorf("call custom func(%s): %w", structValue.Type().Name(), err)
 		}
@@ -94,7 +94,7 @@ func (u *unmarshal) setValueToField(structValue, fieldValue reflect.Value, field
 			// Try call function from parent structs
 			for i := len(parentStructValues) - 1; i >= 0; i-- {
 				sv := parentStructValues[i]
-				okCallFunc, err = callFunc(r, fieldData.FuncName, sv, fieldValue)
+				okCallFunc, err = callDecodeFunc(r, fieldData.FuncName, sv, fieldValue)
 				if err != nil {
 					return fmt.Errorf("call custom func from parent(%s): %w", sv.Type().Name(), err)
 				}
@@ -282,9 +282,9 @@ or
 	return nil
 }
 
-func callFunc(r Reader, funcName string, structValue, fieldValue reflect.Value) (bool, error) {
+func callDecodeFunc(r Reader, funcName string, structValue, fieldValue reflect.Value) (bool, error) {
 	// Call methods
-	m := structValue.Addr().MethodByName(funcName)
+	m := structValue.Addr().MethodByName(funcName + "Decode")
 
 	readerType := reflect.TypeOf((*Reader)(nil)).Elem()
 	if m.IsValid() && m.Type().NumIn() == 1 && m.Type().In(0) == readerType {

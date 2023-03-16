@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type marshal struct {
@@ -22,8 +23,7 @@ func (m *marshal) marshal(v any, parentStructValues []reflect.Value) error {
 
 	fieldCount := rv.NumField()
 	valueType := rv.Type()
-	_ = fieldCount
-	_ = valueType
+
 	for i := 0; i < fieldCount; i++ {
 		fieldType := valueType.Field(i)
 		tags, err := parseTag(fieldType.Tag.Get(tagName))
@@ -55,9 +55,9 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		return nil
 	}
 
-	r := m.w
+	w := m.w
 	if fieldData.Order != nil {
-		r = r.WithOrder(fieldData.Order)
+		w = w.WithOrder(fieldData.Order)
 	}
 
 	var err error
@@ -65,46 +65,44 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 	if err != nil {
 		return fmt.Errorf("set offset: %w", err)
 	}
-	/*
-			if fieldData.FuncName != "" {
-				var okCallFunc bool
-				okCallFunc, err = callFunc(r, fieldData.FuncName, structValue, fieldValue)
+
+	if fieldData.FuncName != "" {
+		var okCallFunc bool
+		okCallFunc, err = callEncodeFunc(w, fieldData.FuncName, structValue, fieldValue)
+		if err != nil {
+			return fmt.Errorf("call custom func(%s): %w", structValue.Type().Name(), err)
+		}
+
+		if !okCallFunc {
+			// Try call function from parent structs
+			for i := len(parentStructValues) - 1; i >= 0; i-- {
+				sv := parentStructValues[i]
+				okCallFunc, err = callEncodeFunc(w, fieldData.FuncName, sv, fieldValue)
 				if err != nil {
-					return fmt.Errorf("call custom func(%s): %w", structValue.Type().Name(), err)
+					return fmt.Errorf("call custom func from parent(%s): %w", sv.Type().Name(), err)
 				}
 
-				if !okCallFunc {
-					// Try call function from parent structs
-					for i := len(parentStructValues) - 1; i >= 0; i-- {
-						sv := parentStructValues[i]
-						okCallFunc, err = callFunc(r, fieldData.FuncName, sv, fieldValue)
-						if err != nil {
-							return fmt.Errorf("call custom func from parent(%s): %w", sv.Type().Name(), err)
-						}
+				if okCallFunc {
+					return nil
+				}
+			}
 
-						if okCallFunc {
-							return nil
-						}
-					}
-
-					message := `
+			message := `
 		failed call method, expected methods:
 			func (*{{Struct}}) {{MethodName}}(r binstruct.Reader) error {}
 		or
 			func (*{{Struct}}) {{MethodName}}(r binstruct.Reader) ({{FieldType}}, error) {}
 		`
-					message = strings.NewReplacer(
-						`{{Struct}}`, structValue.Type().Name(),
-						`{{MethodName}}`, fieldData.FuncName,
-						`{{FieldType}}`, fieldValue.Type().String(),
-					).Replace(message)
-					return errors.New(message)
-				}
+			message = strings.NewReplacer(
+				`{{Struct}}`, structValue.Type().Name(),
+				`{{MethodName}}`, fieldData.FuncName,
+				`{{FieldType}}`, fieldValue.Type().String(),
+			).Replace(message)
+			return errors.New(message)
+		}
 
-				return nil
-			}
-
-	*/
+		return nil
+	}
 
 	switch fieldValue.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -113,20 +111,20 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 
 		if fieldData.Length != nil {
 			// value, err = r.ReadIntX(int(*fieldData.Length))
-			err = r.WriteIntX(fieldValue.Int(), int(*fieldData.Length))
+			err = w.WriteIntX(fieldValue.Int(), int(*fieldData.Length))
 		} else {
 			switch fieldValue.Kind() {
 			case reflect.Int8:
-				e := r.WriteInt8(int8(fieldValue.Int()))
+				e := w.WriteInt8(int8(fieldValue.Int()))
 				err = e
 			case reflect.Int16:
-				e := r.WriteInt16(int16(fieldValue.Int()))
+				e := w.WriteInt16(int16(fieldValue.Int()))
 				err = e
 			case reflect.Int32:
-				e := r.WriteInt32(int32(fieldValue.Int()))
+				e := w.WriteInt32(int32(fieldValue.Int()))
 				err = e
 			case reflect.Int64:
-				e := r.WriteInt64(int64(fieldValue.Int()))
+				e := w.WriteInt64(int64(fieldValue.Int()))
 				err = e
 			default: // reflect.Int:
 				return errors.New("need set tag with len or use int8/int16/int32/int64")
@@ -146,20 +144,20 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 
 		if fieldData.Length != nil {
 			// value, err = r.ReadUintX(int(*fieldData.Length))
-			err = r.WriteUintX(fieldValue.Uint(), int(*fieldData.Length))
+			err = w.WriteUintX(fieldValue.Uint(), int(*fieldData.Length))
 		} else {
 			switch fieldValue.Kind() {
 			case reflect.Uint8:
-				e := r.WriteUint8(uint8(fieldValue.Uint()))
+				e := w.WriteUint8(uint8(fieldValue.Uint()))
 				err = e
 			case reflect.Uint16:
-				e := r.WriteUint16(uint16(fieldValue.Uint()))
+				e := w.WriteUint16(uint16(fieldValue.Uint()))
 				err = e
 			case reflect.Uint32:
-				e := r.WriteUint32(uint32(fieldValue.Uint()))
+				e := w.WriteUint32(uint32(fieldValue.Uint()))
 				err = e
 			case reflect.Uint64:
-				e := r.WriteUint64(uint64(fieldValue.Uint()))
+				e := w.WriteUint64(uint64(fieldValue.Uint()))
 				err = e
 			default: // reflect.Uint:
 				return errors.New("need set tag with len or use uint8/uint16/uint32/uint64")
@@ -174,12 +172,12 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			fieldValue.SetUint(value)
 		}
 	case reflect.Float32:
-		err := r.WriteFloat32(float32(fieldValue.Float()))
+		err := w.WriteFloat32(float32(fieldValue.Float()))
 		if err != nil {
 			return err
 		}
 	case reflect.Float64:
-		err := r.WriteFloat64(fieldValue.Float())
+		err := w.WriteFloat64(fieldValue.Float())
 		if err != nil {
 			return err
 		}
@@ -193,7 +191,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		if fieldData.Length == nil {
 			return errors.New("need set tag with len for string")
 		}
-		_, err := r.Write([]byte(fieldValue.String()))
+		_, err := w.Write([]byte(fieldValue.String()))
 		if err != nil {
 			return err
 		}
@@ -243,4 +241,39 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 	}
 
 	return nil
+}
+
+func callEncodeFunc(r Writer, funcName string, structValue, fieldValue reflect.Value) (bool, error) {
+	// Call methods
+	m := structValue.MethodByName(funcName + "Encode")
+
+	writerType := reflect.TypeOf((*Writer)(nil)).Elem()
+	if m.IsValid() && m.Type().NumIn() == 2 && m.Type().In(0) == writerType && m.Type().In(1) == fieldValue.Type() {
+		ret := m.Call([]reflect.Value{reflect.ValueOf(r), fieldValue})
+
+		errorType := reflect.TypeOf((*error)(nil)).Elem()
+
+		// Method(r binstruct.Reader) error
+		if len(ret) == 1 && ret[0].Type() == errorType {
+			if !ret[0].IsNil() {
+				return true, ret[0].Interface().(error)
+			}
+
+			return true, nil
+		}
+
+		// Method(r binstruct.Reader) (FieldType, error)
+		// if len(ret) == 2 && ret[0].Type() == fieldValue.Type() && ret[1].Type() == errorType {
+		// 	if !ret[1].IsNil() {
+		// 		return true, ret[1].Interface().(error)
+		// 	}
+		//
+		// 	if fieldValue.CanSet() {
+		// 		fieldValue.Set(ret[0])
+		// 	}
+		// 	return true, nil
+		// }
+	}
+
+	return false, nil
 }

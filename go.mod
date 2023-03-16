@@ -7,4 +7,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 )
 
-require github.com/pmezard/go-difflib v1.0.0 // indirect
+require (
+	github.com/ghostiam/binstruct v1.3.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+)
