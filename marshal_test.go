@@ -30,11 +30,11 @@ func Test_marshal_Marshal(t *testing.T) {
 	m := &marshal{w}
 
 	a := A{-1, 2.2}
-	err := m.Marshal(a)
+	b, err := m.Marshal(a)
 	if err != nil {
 		log.Println(err)
 	}
-	fmt.Println(w.Bytes())
+	fmt.Println(b)
 	r := NewReaderFromBytes(w.Bytes(), binary.BigEndian, true)
 	a2 := A{0, 2}
 	err = r.Unmarshal(&a2)

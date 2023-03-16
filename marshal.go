@@ -11,14 +11,14 @@ type marshal struct {
 	w Writer
 }
 
-func (m *marshal) Marshal(v any) error {
+func (m *marshal) Marshal(v any) ([]byte, error) {
 	return m.marshal(v, nil)
 }
 
-func (m *marshal) marshal(v any, parentStructValues []reflect.Value) error {
+func (m *marshal) marshal(v any, parentStructValues []reflect.Value) ([]byte, error) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Struct {
-		return &InvalidUnmarshalError{reflect.TypeOf(v)}
+		return nil, &InvalidUnmarshalError{reflect.TypeOf(v)}
 	}
 
 	fieldCount := rv.NumField()
@@ -28,22 +28,22 @@ func (m *marshal) marshal(v any, parentStructValues []reflect.Value) error {
 		fieldType := valueType.Field(i)
 		tags, err := parseTag(fieldType.Tag.Get(tagName))
 		if err != nil {
-			return fmt.Errorf(`failed parseTag for field "%s": %w`, fieldType.Name, err)
+			return nil, fmt.Errorf(`failed parseTag for field "%s": %w`, fieldType.Name, err)
 		}
 
 		fieldData, err := parseReadDataFromTags(rv, tags)
 		if err != nil {
-			return fmt.Errorf(`failed parse ReadData from tags for field "%s": %w`, fieldType.Name, err)
+			return nil, fmt.Errorf(`failed parse ReadData from tags for field "%s": %w`, fieldType.Name, err)
 		}
 
 		fieldValue := rv.Field(i)
 		fmt.Println(rv, fieldValue, fieldData)
 		err = m.setValueToField(rv, fieldValue, fieldData, parentStructValues)
 		if err != nil {
-			return fmt.Errorf(`failed set value to field "%s": %w`, fieldType.Name, err)
+			return nil, fmt.Errorf(`failed set value to field "%s": %w`, fieldType.Name, err)
 		}
 	}
-	return nil
+	return m.w.Bytes(), nil
 }
 
 func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldData *fieldReadData, parentStructValues []reflect.Value) error {
@@ -232,7 +232,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			}
 		}
 	case reflect.Struct:
-		err = m.marshal(fieldValue.Addr().Interface(), append(parentStructValues, structValue))
+		_, err = m.marshal(fieldValue.Addr().Interface(), append(parentStructValues, structValue))
 		if err != nil {
 			return fmt.Errorf("unmarshal struct: %w", err)
 		}

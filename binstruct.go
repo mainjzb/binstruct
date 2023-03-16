@@ -24,11 +24,29 @@ func Unmarshal(data []byte, order binary.ByteOrder, v interface{}) error {
 	return NewReaderFromBytes(data, order, false).Unmarshal(v)
 }
 
+func Marshal(order binary.ByteOrder, v interface{}) ([]byte, error) {
+	return NewWriter(nil, order, false).Marshal(v)
+}
+
+type Encoder struct {
+	w     io.Writer
+	order binary.ByteOrder
+	debug bool
+}
+
 // A Decoder reads and decodes binary values from an input stream.
 type Decoder struct {
 	r     io.ReadSeeker
 	order binary.ByteOrder
 	debug bool
+}
+
+func NewEncoder(w io.Writer, order binary.ByteOrder) *Encoder {
+	return &Encoder{
+		w:     w,
+		order: order,
+		debug: false,
+	}
 }
 
 // NewDecoder returns a new decoder that reads from r with byte order.
@@ -41,6 +59,11 @@ func NewDecoder(r io.ReadSeeker, order binary.ByteOrder) *Decoder {
 }
 
 // SetDebug if set true, all read bytes and offsets will be displayed.
+func (dec *Encoder) SetDebug(debug bool) {
+	dec.debug = debug
+}
+
+// SetDebug if set true, all read bytes and offsets will be displayed.
 func (dec *Decoder) SetDebug(debug bool) {
 	dec.debug = debug
 }
@@ -49,4 +72,10 @@ func (dec *Decoder) SetDebug(debug bool) {
 // input and stores it in the value pointed to by v.
 func (dec *Decoder) Decode(v interface{}) error {
 	return NewReader(dec.r, dec.order, dec.debug).Unmarshal(v)
+}
+
+// Decode reads the binary-encoded value from its
+// input and stores it in the value pointed to by v.
+func (dec *Encoder) Encode(v interface{}) ([]byte, error) {
+	return NewWriter(nil, dec.order, dec.debug).Marshal(v)
 }

@@ -37,7 +37,7 @@ type Writer interface {
 
 	// Marshal parses the binary data and stores the result
 	// in the value pointed to by v.
-	Marshal(v any) error
+	Marshal(v any) ([]byte, error)
 
 	// WithOrder changes the byte order for the new Reader
 	WithOrder(order binary.ByteOrder) Writer
@@ -177,7 +177,7 @@ func (w *writer) Bytes() []byte {
 	return w.buffer.Bytes()
 }
 
-func (w *writer) Marshal(v any) error {
+func (w *writer) Marshal(v any) ([]byte, error) {
 	m := &marshal{w}
 	return m.Marshal(v)
 }
