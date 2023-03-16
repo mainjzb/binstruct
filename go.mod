@@ -1,4 +1,4 @@
-module github.com/ghostiam/binstruct
+module github.com/mainjzb/binstruct
 
 go 1.20
 
