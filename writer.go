@@ -43,15 +43,23 @@ type Writer interface {
 	WithOrder(order binary.ByteOrder) Writer
 }
 
-func NewWriter(b []byte, order binary.ByteOrder, debug bool) Writer {
-	if b == nil {
-		b = make([]byte, 0, 1024)
-	}
+func NewWriterWithBuffer(buffer *bytes.Buffer, order binary.ByteOrder, debug bool) Writer {
 	if order == nil {
 		order = binary.BigEndian
 	}
 	return &writer{
-		buffer: bytes.NewBuffer(b),
+		buffer: buffer,
+		order:  order,
+		debug:  debug,
+	}
+}
+
+func NewWriter(order binary.ByteOrder, debug bool) Writer {
+	if order == nil {
+		order = binary.BigEndian
+	}
+	return &writer{
+		buffer: bytes.NewBuffer(make([]byte, 0, 1024)),
 		order:  order,
 		debug:  debug,
 	}
@@ -178,11 +186,10 @@ func (w *writer) Bytes() []byte {
 }
 
 func (w *writer) Marshal(v any) ([]byte, error) {
-	m := &marshal{w}
+	m := &marshal{w: w}
 	return m.Marshal(v)
 }
 
 func (w *writer) WithOrder(order binary.ByteOrder) Writer {
-	// todo buffer need
-	return NewWriter(w.Bytes(), w.order, w.debug)
+	return NewWriterWithBuffer(w.buffer, order, w.debug)
 }

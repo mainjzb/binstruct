@@ -35,9 +35,7 @@ func (m *marshal) marshal(v any, parentStructValues []reflect.Value) ([]byte, er
 		if err != nil {
 			return nil, fmt.Errorf(`failed parse ReadData from tags for field "%s": %w`, fieldType.Name, err)
 		}
-
 		fieldValue := rv.Field(i)
-		fmt.Println(rv, fieldValue, fieldData)
 		err = m.setValueToField(rv, fieldValue, fieldData, parentStructValues)
 		if err != nil {
 			return nil, fmt.Errorf(`failed set value to field "%s": %w`, fieldType.Name, err)
@@ -139,7 +137,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			fieldValue.SetInt(value)
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		var value uint64
+		// var value uint64
 		var err error
 
 		if fieldData.Length != nil {
@@ -168,9 +166,9 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			return err
 		}
 
-		if fieldValue.CanSet() {
-			fieldValue.SetUint(value)
-		}
+		// if fieldValue.CanSet() {
+		// 	fieldValue.SetUint(value)
+		// }
 	case reflect.Float32:
 		err := w.WriteFloat32(float32(fieldValue.Float()))
 		if err != nil {
@@ -201,13 +199,15 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		}
 
 		for i := int64(0); i < *fieldData.Length; i++ {
-			tmpV := reflect.New(fieldValue.Type().Elem()).Elem()
-			err = m.setValueToField(structValue, tmpV, fieldData.ElemFieldData, parentStructValues)
+			// value := fieldValue.Interface()
+			// v2 := fieldValue.Index(int(i))
+			// _ = v2
+			// _ = value
+			// tmpV := reflect.New(fieldValue.Type().Elem()).Elem()
+			// fmt.Println(tmpV, fieldValue, fieldData.ElemFieldData)
+			err = m.setValueToField(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
 			if err != nil {
 				return err
-			}
-			if fieldValue.CanSet() {
-				fieldValue.Set(reflect.Append(fieldValue, tmpV))
 			}
 		}
 	case reflect.Array:
@@ -223,7 +223,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 
 		for i := int64(0); i < arrLen; i++ {
 			tmpV := reflect.New(fieldValue.Type().Elem()).Elem()
-			err = m.setValueToField(structValue, tmpV, fieldData.ElemFieldData, parentStructValues)
+			err = m.setValueToField(structValue, fieldValue, fieldData.ElemFieldData, parentStructValues)
 			if err != nil {
 				return err
 			}
@@ -232,7 +232,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			}
 		}
 	case reflect.Struct:
-		_, err = m.marshal(fieldValue.Addr().Interface(), append(parentStructValues, structValue))
+		_, err := m.marshal(fieldValue.Interface(), append(parentStructValues, structValue))
 		if err != nil {
 			return fmt.Errorf("unmarshal struct: %w", err)
 		}

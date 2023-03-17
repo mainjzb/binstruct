@@ -25,15 +25,15 @@ func Unmarshal(data []byte, order binary.ByteOrder, v interface{}) error {
 }
 
 func MarshalLE(v interface{}) ([]byte, error) {
-	return NewWriter(nil, binary.LittleEndian, false).Marshal(v)
+	return NewWriter(binary.LittleEndian, false).Marshal(v)
 }
 
 func MarshalBE(v interface{}) ([]byte, error) {
-	return NewWriter(nil, binary.BigEndian, false).Marshal(v)
+	return NewWriter(binary.BigEndian, false).Marshal(v)
 }
 
 func Marshal(order binary.ByteOrder, v interface{}) ([]byte, error) {
-	return NewWriter(nil, order, false).Marshal(v)
+	return NewWriter(order, false).Marshal(v)
 }
 
 type Encoder struct {
@@ -85,5 +85,5 @@ func (dec *Decoder) Decode(v interface{}) error {
 // Decode reads the binary-encoded value from its
 // input and stores it in the value pointed to by v.
 func (dec *Encoder) Encode(v interface{}) ([]byte, error) {
-	return NewWriter(nil, dec.order, dec.debug).Marshal(v)
+	return NewWriter(dec.order, dec.debug).Marshal(v)
 }
