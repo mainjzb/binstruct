@@ -295,10 +295,10 @@ type test struct {
 	CallMethodWithBEReader uint16 `bin:"be,MethodNameWithBEReader"`
 } 
 
-// Method can be:
-func (*test) MethodName(r binstruct.Reader) (error) {}
-// or
-func (*test) MethodName(r binstruct.Reader) (FieldType, error) {}
+
+// Encode function and Decode function
+func (test) MethodNameDecode(r binstruct.Reader) (FieldType, error) {}
+func (test) MethodNameEncode(r binstruct.Reader, v FieldType) error {}
 ```
 
 See the tests and examples for more information.
