@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"reflect"
 	"testing"
 )
 
@@ -110,19 +111,15 @@ func Test_marshal_Marshal2(t *testing.T) {
 	var actual name
 	err := UnmarshalLE(data, &actual) // UnmarshalLE() or Unmarshal()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal("UnmarshalLE err:" + err.Error())
 	}
 
-	fmt.Println(actual)
+	result, err := MarshalLE(actual)
+	if err != nil {
+		t.Fatal("MarshalLE err: " + err.Error())
+	}
 
-	// result, err := MarshalLE(actual)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-
-	w := NewWriter(binary.LittleEndian, false)
-	w.Marshal(actual)
-
-	fmt.Println(data)
-	fmt.Println(w.Bytes())
+	if !reflect.DeepEqual(result, data) {
+		t.Fatal("result is not equal")
+	}
 }

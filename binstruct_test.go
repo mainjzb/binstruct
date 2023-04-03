@@ -668,7 +668,7 @@ type dataCustomMethod1Struct struct {
 	Custom map[string]string `bin:"CustomMap"`
 }
 
-func (d *dataCustomMethod1Struct) CustomMap(r Reader) error {
+func (d *dataCustomMethod1Struct) CustomMapDecode(r Reader) error {
 	m := make(map[string]string)
 
 	lenMap, err := r.ReadInt8()
@@ -711,7 +711,7 @@ type dataCustomMethod2Struct struct {
 	Custom [2]map[string]string `bin:"len:2,[CustomMap]"`
 }
 
-func (*dataCustomMethod2Struct) CustomMap(r Reader) (map[string]string, error) {
+func (dataCustomMethod2Struct) CustomMapDecode(r Reader) (map[string]string, error) {
 	m := make(map[string]string)
 
 	lenMap, err := r.ReadInt8()
@@ -800,7 +800,7 @@ type CustomMethodFromParent struct {
 	}
 }
 
-func (*CustomMethodFromParent) CustomMethodFromParent(r Reader) (uint16, error) {
+func (*CustomMethodFromParent) CustomMethodFromParentDecode(r Reader) (uint16, error) {
 	var out uint16
 	if err := binary.Read(r, binary.LittleEndian, &out); err != nil {
 		return 0, err
@@ -853,11 +853,11 @@ type LeAndBeInOneStruct struct {
 	UInt16Check        uint16
 }
 
-func (*LeAndBeInOneStruct) ParseUInt16WithLEReader(r Reader) (uint16, error) {
+func (*LeAndBeInOneStruct) ParseUInt16WithLEReaderDecode(r Reader) (uint16, error) {
 	return r.ReadUint16()
 }
 
-func (*LeAndBeInOneStruct) ParseUInt16WithBEReader(r Reader) (uint16, error) {
+func (*LeAndBeInOneStruct) ParseUInt16WithBEReaderDecode(r Reader) (uint16, error) {
 	return r.ReadUint16()
 }
 

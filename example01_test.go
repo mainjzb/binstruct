@@ -15,7 +15,7 @@ type dataWithNullTerminatedString struct {
 	OtherID int32
 }
 
-func (*dataWithNullTerminatedString) NullTerminatedString(r binstruct.Reader) (string, error) {
+func (dataWithNullTerminatedString) NullTerminatedStringDecode(r binstruct.Reader) (string, error) {
 	var b []byte
 
 	for {
