@@ -83,7 +83,7 @@ func (u *unmarshal) setValueToField(structValue, fieldValue reflect.Value, field
 		return fmt.Errorf("set offset: %w", err)
 	}
 
-	if fieldData.FuncName != "" {
+	if fieldData.FuncName != "" && fieldData.FuncName != "Length" && fieldData.FuncName != "RemainingLength" {
 		var okCallFunc bool
 		okCallFunc, err = callDecodeFunc(r, fieldData.FuncName, structValue, fieldValue)
 		if err != nil {

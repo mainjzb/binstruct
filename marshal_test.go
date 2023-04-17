@@ -64,18 +64,15 @@ type name struct {
 	Signature        uint8  `bin:"len:1"` // 签名 0:无签名 1:有签名
 	Reserve          []byte `bin:"len:3"` // 保留 字段
 	// Message
-	LightsMessage CrossLight
-	Crc           uint16 `bin:"len:2,be"` // CRC-16/MODBUS 大端
-}
-
-// CrossLight 灯色状态消息
-type CrossLight struct {
-	Length       uint16          `bin:"len:2"`                  // 消息长度
-	Lon          float64         `bin:"len:4,Int32To10e6Float"` // 经度
-	Lat          float64         `bin:"len:4,Int32To10e6Float"` // 纬度
-	Height       uint16          `bin:"len:2"`                  // 海拔高度
-	CrossInCount uint8           `bin:"len:1"`                  // 路口进口数量
-	InLights     []EntranceLight `bin:"len:CrossInCount"`
+	LightsMessage struct {
+		Length       uint16          `bin:"len:2,RemainingLength"`  // 消息长度 Length
+		Lon          float64         `bin:"len:4,Int32To10e6Float"` // 经度
+		Lat          float64         `bin:"len:4,Int32To10e6Float"` // 纬度
+		Height       uint16          `bin:"len:2"`                  // 海拔高度
+		CrossInCount uint8           `bin:"len:1"`                  // 路口进口数量
+		InLights     []EntranceLight `bin:"len:CrossInCount"`
+	}
+	Crc uint16 `bin:"len:2,be"` // CRC-16/MODBUS 大端
 }
 
 // EntranceLight 进口灯色状态信息
@@ -93,7 +90,7 @@ type LightStatus struct {
 	RemainingTime uint8 // 剩余时间
 }
 
-func (cl CrossLight) Int32To10e6FloatDecode(r Reader) (float64, error) {
+func (cl name) Int32To10e6FloatDecode(r Reader) (float64, error) {
 	v, err := r.ReadInt32()
 	if err != nil {
 		return 0, err
@@ -101,7 +98,7 @@ func (cl CrossLight) Int32To10e6FloatDecode(r Reader) (float64, error) {
 	return float64(v) / 1000000, nil
 }
 
-func (cl CrossLight) Int32To10e6FloatEncode(w Writer, v float64) error {
+func (cl name) Int32To10e6FloatEncode(w Writer, v float64) error {
 	return w.WriteInt32(int32(v * 1000000))
 }
 

@@ -269,11 +269,13 @@ type Other struct {
 
 ```go
 type test struct {
+    Length       uint16 `bin:"len:2,Length"` // calc current struct length that only for write
+	Length       uint16 `bin:"len:2,RemainingLength"` // calc current struct length, don't contain current field that only for write
 	IgnoredField []byte `bin:"-"`          // ignore field
 	CallMethod   []byte `bin:"MethodName"` // Call method "MethodName"
 	ReadLength   []byte `bin:"len:42"`     // read 42 bytes
 
-	// Offsets test binstruct_test.go:9
+// Offsets test binstruct_test.go:9
 	Offset      byte `bin:"offset:42"`      // move to 42 bytes from current position and read byte
 	OffsetStart byte `bin:"offsetStart:42"` // move to 42 bytes from start position and read byte
 	OffsetEnd   byte `bin:"offsetEnd:-42"`  // move to -42 bytes from end position and read byte

@@ -64,6 +64,83 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		return fmt.Errorf("set offset: %w", err)
 	}
 
+	if fieldData.FuncName == "Length" {
+		sum, err := calcLength(structValue.Interface(), append(parentStructValues))
+		if err != nil {
+			return err
+		}
+		if fieldData.Length != nil {
+			// value, err = r.ReadIntX(int(*fieldData.Length))
+			switch fieldValue.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				err = w.WriteIntX(int64(sum), int(*fieldData.Length))
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				err = w.WriteUintX(uint64(sum), int(*fieldData.Length))
+			}
+		} else {
+
+			switch fieldValue.Kind() {
+			case reflect.Int8:
+				return w.WriteInt8(int8(sum))
+			case reflect.Int16:
+				return w.WriteInt16(int16(sum))
+			case reflect.Int32:
+				return w.WriteInt32(int32(sum))
+			case reflect.Int64:
+				return w.WriteInt64(int64(sum))
+			case reflect.Uint8:
+				return w.WriteUint8(uint8(sum))
+			case reflect.Uint16:
+				return w.WriteUint16(uint16(sum))
+			case reflect.Uint32:
+				return w.WriteUint32(uint32(sum))
+			case reflect.Uint64:
+				return w.WriteUint64(uint64(sum))
+			default: // reflect.Int:
+				return errors.New("need set tag with len or use int8/int16/int32/int64")
+			}
+		}
+		return nil
+	}
+
+	if fieldData.FuncName == "RemainingLength" {
+		sum, err := calcLength(structValue.Interface(), append(parentStructValues))
+		if err != nil {
+			return err
+		}
+		if fieldData.Length != nil {
+			switch fieldValue.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				err = w.WriteIntX(int64(sum-int(*fieldData.Length)), int(*fieldData.Length))
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				err = w.WriteUintX(uint64(sum-int(*fieldData.Length)), int(*fieldData.Length))
+			}
+		} else {
+
+			switch fieldValue.Kind() {
+			case reflect.Int8:
+				return w.WriteInt8(int8(sum - 1))
+			case reflect.Int16:
+				return w.WriteInt16(int16(sum - 2))
+			case reflect.Int32:
+				return w.WriteInt32(int32(sum - 4))
+			case reflect.Int64:
+				return w.WriteInt64(int64(sum - 8))
+			case reflect.Uint8:
+				return w.WriteUint8(uint8(sum - 1))
+			case reflect.Uint16:
+				return w.WriteUint16(uint16(sum - 2))
+			case reflect.Uint32:
+				return w.WriteUint32(uint32(sum - 4))
+			case reflect.Uint64:
+				return w.WriteUint64(uint64(sum - 8))
+			default: // reflect.Int:
+				return errors.New("need set tag with len or use int8/int16/int32/int64")
+			}
+		}
+		return nil
+	}
+
 	if fieldData.FuncName != "" {
 		var okCallFunc bool
 		okCallFunc, err = callEncodeFunc(w, fieldData.FuncName, structValue, fieldValue)
@@ -253,7 +330,7 @@ func callEncodeFunc(r Writer, funcName string, structValue, fieldValue reflect.V
 
 		errorType := reflect.TypeOf((*error)(nil)).Elem()
 
-		// Method(r binstruct.Reader) error
+		// Method(w Writer, v value) error
 		if len(ret) == 1 && ret[0].Type() == errorType {
 			if !ret[0].IsNil() {
 				return true, ret[0].Interface().(error)
@@ -261,19 +338,88 @@ func callEncodeFunc(r Writer, funcName string, structValue, fieldValue reflect.V
 
 			return true, nil
 		}
-
-		// Method(r binstruct.Reader) (FieldType, error)
-		// if len(ret) == 2 && ret[0].Type() == fieldValue.Type() && ret[1].Type() == errorType {
-		// 	if !ret[1].IsNil() {
-		// 		return true, ret[1].Interface().(error)
-		// 	}
-		//
-		// 	if fieldValue.CanSet() {
-		// 		fieldValue.Set(ret[0])
-		// 	}
-		// 	return true, nil
-		// }
 	}
 
 	return false, nil
+}
+
+func calcLength(v any, parentStructValues []reflect.Value) (int, error) {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Struct {
+		return 0, &InvalidUnmarshalError{reflect.TypeOf(v)}
+	}
+
+	fieldCount := rv.NumField()
+	valueType := rv.Type()
+
+	sumLength := 0
+	for i := 0; i < fieldCount; i++ {
+		fieldType := valueType.Field(i)
+		tags, err := parseTag(fieldType.Tag.Get(tagName))
+		if err != nil {
+			return 0, fmt.Errorf(`failed parseTag for field "%s": %w`, fieldType.Name, err)
+		}
+
+		fieldData, err := parseReadDataFromTags(rv, tags)
+		if err != nil {
+			return 0, fmt.Errorf(`failed parse ReadData from tags for field "%s": %w`, fieldType.Name, err)
+		}
+		fieldValue := rv.Field(i)
+		length := getValueLength(rv, fieldValue, fieldData, parentStructValues)
+		sumLength += length
+		if err != nil {
+			return 0, fmt.Errorf(`failed set value to field "%s": %w`, fieldType.Name, err)
+		}
+	}
+	return sumLength, nil
+}
+
+func getValueLength(structValue, fieldValue reflect.Value, fieldData *fieldReadData, parentStructValues []reflect.Value) int {
+
+	switch fieldValue.Kind() {
+
+	case reflect.Int8, reflect.Uint8:
+		if fieldData != nil && fieldData.Length != nil {
+			return int(*fieldData.Length)
+		}
+		return 1
+	case reflect.Int16, reflect.Uint16:
+		if fieldData != nil && fieldData.Length != nil {
+			return int(*fieldData.Length)
+		}
+		return 2
+	case reflect.Int32, reflect.Uint32, reflect.Float32:
+		if fieldData != nil && fieldData.Length != nil {
+			return int(*fieldData.Length)
+		}
+		return 4
+	case reflect.Int64, reflect.Uint64, reflect.Float64:
+		if fieldData != nil && fieldData.Length != nil {
+			return int(*fieldData.Length)
+		}
+		return 8
+	case reflect.String:
+		return len([]byte(fieldValue.String()))
+	case reflect.Slice:
+		if fieldData.Length == nil {
+			*fieldData.Length = int64(fieldValue.Len())
+		}
+		sum := 0
+		for i := int64(0); i < *fieldData.Length; i++ {
+			sum += getValueLength(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
+		}
+		return sum
+	case reflect.Array:
+		return fieldValue.Len()
+	case reflect.Struct:
+		// marshal(fieldValue.Interface(), append(parentStructValues, structValue))
+		sum, err := calcLength(fieldValue.Interface(), append(parentStructValues, structValue))
+		if err != nil {
+			panic("err: " + err.Error())
+		}
+		return sum
+	default: // reflect.Int:
+		panic(`type "` + fieldValue.Kind().String() + `" not supported`)
+	}
+	return 0
 }
