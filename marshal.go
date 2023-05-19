@@ -198,16 +198,20 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 			return err
 		}
 	case reflect.Slice:
-		if fieldData.Length == nil {
-			return errors.New("need set tag with len for slice")
-		}
-
-		for i := int64(0); i < *fieldData.Length; i++ {
-			err = m.setValueToField(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
+		if fieldData.Length != nil {
+			for i := int64(0); i < *fieldData.Length; i++ {
+				err = m.setValueToField(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
+				if err != nil {
+					return err
+				}
+			}
+		} else if fieldValue.Type().Elem().Kind() == reflect.Uint8 {
+			_, err := w.Write(fieldValue.Bytes())
 			if err != nil {
 				return err
 			}
 		}
+
 	case reflect.Array:
 		var arrLen int64
 

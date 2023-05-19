@@ -199,3 +199,28 @@ func Test_StatisticsData(t *testing.T) {
 		t.Error(fmt.Printf("inner function Length err: want=90, got=%d ", buf[0]))
 	}
 }
+
+type Packet struct {
+	SendID       uint8
+	RevID        uint8
+	DetectorAddr uint8
+	OperateType  uint8
+	ContentID    uint8
+	Content      []byte
+	Crc          uint16
+}
+
+func Test_Packet(t *testing.T) {
+	pt := Packet{
+		RevID:       0x01,
+		OperateType: 0x03,
+		ContentID:   0x04,
+		Content:     []byte{0x01, 0x02},
+		Crc:         0x00,
+	}
+	data, err := MarshalLE(pt)
+	if err != nil {
+		t.Error(err)
+	}
+	_ = data
+}
