@@ -203,12 +203,6 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		}
 
 		for i := int64(0); i < *fieldData.Length; i++ {
-			// value := fieldValue.Interface()
-			// v2 := fieldValue.Index(int(i))
-			// _ = v2
-			// _ = value
-			// tmpV := reflect.New(fieldValue.Type().Elem()).Elem()
-			// fmt.Println(tmpV, fieldValue, fieldData.ElemFieldData)
 			err = m.setValueToField(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
 			if err != nil {
 				return err
@@ -226,13 +220,9 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		}
 
 		for i := int64(0); i < arrLen; i++ {
-			tmpV := reflect.New(fieldValue.Type().Elem()).Elem()
 			err = m.setValueToField(structValue, fieldValue, fieldData.ElemFieldData, parentStructValues)
 			if err != nil {
 				return err
-			}
-			if fieldValue.CanSet() {
-				fieldValue.Index(int(i)).Set(tmpV)
 			}
 		}
 	case reflect.Struct:
@@ -302,7 +292,9 @@ func calcLength(v any, parentStructValues []reflect.Value) (int, error) {
 }
 
 func getValueLength(structValue, fieldValue reflect.Value, fieldData *fieldReadData, parentStructValues []reflect.Value) int {
-
+	if fieldData.Length != nil {
+		return int(*fieldData.Length)
+	}
 	switch fieldValue.Kind() {
 
 	case reflect.Int8, reflect.Uint8:
