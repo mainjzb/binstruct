@@ -220,7 +220,7 @@ func (m *marshal) setValueToField(structValue, fieldValue reflect.Value, fieldDa
 		}
 
 		for i := int64(0); i < arrLen; i++ {
-			err = m.setValueToField(structValue, fieldValue, fieldData.ElemFieldData, parentStructValues)
+			err = m.setValueToField(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
 			if err != nil {
 				return err
 			}
@@ -292,9 +292,6 @@ func calcLength(v any, parentStructValues []reflect.Value) (int, error) {
 }
 
 func getValueLength(structValue, fieldValue reflect.Value, fieldData *fieldReadData, parentStructValues []reflect.Value) int {
-	if fieldData.Length != nil {
-		return int(*fieldData.Length)
-	}
 	switch fieldValue.Kind() {
 
 	case reflect.Int8, reflect.Uint8:
@@ -323,14 +320,15 @@ func getValueLength(structValue, fieldValue reflect.Value, fieldData *fieldReadD
 		if fieldData.Length == nil {
 			*fieldData.Length = int64(fieldValue.Len())
 		}
-		sum := 0
-		for i := int64(0); i < *fieldData.Length; i++ {
-			sum += getValueLength(structValue, fieldValue.Index(int(i)), fieldData.ElemFieldData, parentStructValues)
-		}
-		return sum
+
+		elemSize := getValueLength(structValue, fieldValue.Index(0), fieldData.ElemFieldData, parentStructValues)
+		return int(*fieldData.Length) * elemSize
 	case reflect.Array:
 		return fieldValue.Len()
 	case reflect.Struct:
+		if fieldData != nil && fieldData.Length != nil {
+			return int(*fieldData.Length)
+		}
 		// marshal(fieldValue.Interface(), append(parentStructValues, structValue))
 		sum, err := calcLength(fieldValue.Interface(), append(parentStructValues, structValue))
 		if err != nil {

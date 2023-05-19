@@ -6,6 +6,7 @@ import (
 	"log"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type A struct {
@@ -65,11 +66,11 @@ type name struct {
 	Reserve          []byte `bin:"len:3"` // 保留 字段
 	// Message
 	LightsMessage struct {
-		Length       uint16          `bin:"len:2,RemainingLength"`  // 消息长度 Length
-		Lon          float64         `bin:"len:4,Int32To10e6Float"` // 经度
-		Lat          float64         `bin:"len:4,Int32To10e6Float"` // 纬度
-		Height       uint16          `bin:"len:2"`                  // 海拔高度
-		CrossInCount uint8           `bin:"len:1"`                  // 路口进口数量
+		Length       uint16          `bin:"len:2,LengthWithoutSelf"` // 消息长度 Length
+		Lon          float64         `bin:"len:4,Int32To10e6Float"`  // 经度
+		Lat          float64         `bin:"len:4,Int32To10e6Float"`  // 纬度
+		Height       uint16          `bin:"len:2"`                   // 海拔高度
+		CrossInCount uint8           `bin:"len:1"`                   // 路口进口数量
 		InLights     []EntranceLight `bin:"len:CrossInCount"`
 	}
 	Crc uint16 `bin:"len:2,be"` // CRC-16/MODBUS 大端
@@ -118,5 +119,83 @@ func Test_marshal_Marshal2(t *testing.T) {
 
 	if !reflect.DeepEqual(result, data) {
 		t.Fatal("result is not equal")
+	}
+}
+
+// StatisticsData 统计数据
+type StatisticsData struct {
+	Len             uint16       `bin:"len:2,Length"`
+	Time            time.Time    `bin:"len:7,Time"` // [7]byte
+	CollectionCycle uint16       // 采集周期(秒)
+	RoadCount       uint8        // M个车道
+	Content         []RoadDetail `bin:"len:RoadCount"`
+}
+type RoadDetail struct {
+	LaneID                uint8   // 车道号
+	HeadTime              float64 `bin:"len:2,Uint16To10e1Float"` // 车头时距 0.1 s
+	BodyTime              float64 `bin:"len:2,Uint16To10e1Float"` // 车身时距 0.1 s
+	Speed85p              float64 `bin:"len:2,Uint16To10e1Float"` // 85%速度 0.1 km/h
+	TimeOcc               float64 `bin:"len:2,Uint16To10e1Float"` // 时间占有率 0.1
+	Car1Flow              uint16  // 车型流量  车型由小到大
+	Car1Speed             float64 `bin:"len:2,Uint16To10e1Float"` // 车型速度 0.1 km/h
+	Car1Occ               float64 `bin:"len:2,Uint16To10e1Float"` // 车型占有率 0.1
+	Car2Flow              uint16  // 车型流量
+	Car2Speed             float64 `bin:"len:2,Uint16To10e1Float"` // 车型速度 0.1 km/h
+	Car2Occ               float64 `bin:"len:2,Uint16To10e1Float"` // 车型占有率  0.1
+	Car3Flow              uint16  // 车型流量
+	Car3Speed             float64 `bin:"len:2,Uint16To10e1Float"` // 车型速度 0.1 km/h
+	Car3Occ               float64 `bin:"len:2,Uint16To10e1Float"` // 车型占有率  0.1
+	MaxVehicleQueueLength uint16  // 最大排队长度 米
+	MaxVehicleQueueCount  uint16  // 最大排队数量
+	Reserved              [8]byte // 保留字段
+}
+
+func (sd StatisticsData) TimeDecode(r Reader) (time.Time, error) {
+	_, data, err := r.ReadBytes(7)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	t := time.Date(int(data[0])+2000, time.Month(data[1]), int(data[2]), int(data[3]), int(data[4]), int(data[5]), 0, time.Local)
+
+	return t, nil
+}
+
+func (sd StatisticsData) TimeEncode(w Writer, v time.Time) error {
+	data := make([]byte, 7)
+	data[0] = byte(v.Year() % 100)
+	data[1] = byte(v.Month())
+	data[2] = byte(v.Day())
+	data[3] = byte(v.Hour())
+	data[4] = byte(v.Minute())
+	data[5] = byte(v.Second())
+	data[6] = byte(v.Weekday())
+	_, err := w.Write(data)
+	return err
+}
+
+func (sd StatisticsData) Uint16To10e1FloatDecode(r Reader) (float64, error) {
+	v, err := r.ReadUint16()
+	if err != nil {
+		return 0, err
+	}
+	return float64(v) / 10, nil
+}
+
+func (sd StatisticsData) Uint16To10e1FloatEncode(w Writer, v float64) error {
+	return w.WriteUint16(uint16(v * 10))
+}
+
+func Test_StatisticsData(t *testing.T) {
+	sd := StatisticsData{
+		RoadCount: 2,
+		Content:   make([]RoadDetail, 2),
+	}
+	buf, err := MarshalLE(sd)
+	if err != nil {
+		t.Error(err)
+	}
+	if buf[0] != 90 {
+		t.Error(fmt.Printf("inner function Length err: want=90, got=%d ", buf[0]))
 	}
 }
