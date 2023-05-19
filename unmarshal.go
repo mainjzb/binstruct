@@ -64,6 +64,7 @@ func (u *unmarshal) unmarshal(v interface{}, parentStructValues []reflect.Value)
 	return nil
 }
 
+// fieldValue 用来设置字段值，和 获取字段类型
 func (u *unmarshal) setValueToField(structValue, fieldValue reflect.Value, fieldData *fieldReadData, parentStructValues []reflect.Value) error {
 	if fieldData == nil {
 		fieldData = &fieldReadData{}
