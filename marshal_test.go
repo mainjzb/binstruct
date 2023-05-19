@@ -200,27 +200,31 @@ func Test_StatisticsData(t *testing.T) {
 	}
 }
 
-type Packet struct {
-	SendID       uint8
-	RevID        uint8
-	DetectorAddr uint8
-	OperateType  uint8
-	ContentID    uint8
-	Content      []byte
-	Crc          uint16
-}
-
 func Test_Packet(t *testing.T) {
+	type Packet struct {
+		SendID       uint8
+		RevID        uint8
+		DetectorAddr uint8
+		OperateType  uint8
+		ContentID    uint8
+		Content      []byte
+		Crc          uint16
+	}
 	pt := Packet{
-		RevID:       0x01,
-		OperateType: 0x03,
-		ContentID:   0x04,
-		Content:     []byte{0x01, 0x02},
-		Crc:         0x00,
+		SendID:       0x01,
+		RevID:        0x02,
+		DetectorAddr: 0x03,
+		OperateType:  0x04,
+		ContentID:    0x05,
+		Content:      []byte{0x06, 0x07, 0x08},
+		Crc:          0x0a09,
 	}
 	data, err := MarshalLE(pt)
 	if err != nil {
 		t.Error(err)
 	}
-	_ = data
+
+	if !reflect.DeepEqual(data, []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a}) {
+		t.Error("data marshal err")
+	}
 }
